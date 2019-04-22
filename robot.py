@@ -24,8 +24,7 @@ SOFTWARE.
 
 from __future__ import print_function
 
-import requests
-import json, time, sys, os, logging, logging.handlers
+import requests, json, time, sys, os, re, logging, logging.handlers
 from flask import Flask, request, jsonify
 from datetime import datetime
 
@@ -45,6 +44,8 @@ PASSWORD = config['main']['password']
 BRAND = config['main']['brand']
 TOKENTTL = config['main']['tokenttl']
 CULTURE = config['apiglobal']['culture']
+LOCKFILE = config['main']['lockfile']
+PASSCODE = config['main']['passcode']
 
 #MyQ API Configuration
 if (BRAND.lower() == 'chamberlain'):
@@ -251,6 +252,25 @@ class MyQ:
         return (success, instances)
 
 
+def format_duration(duration):
+    days = duration.days
+    hours, remainder = divmod(duration.seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    output = ""
+    if days > 0:
+        output = "%s days, " % days
+    if hours > 0:
+        output = "%s%s hours, " % (output, hours)
+    if minutes > 0:
+        output = "%s%s minutes" % (output, minutes)
+    if len(output) == 0 and seconds > 0:
+        output = "%s seconds" % seconds
+    if re.search(", $", output):
+        output = output[:-2]
+    return output
+
+
+
 def do_stuff(device_type, desired_state, LOGGER, name=None):
     message = ""
     devices = {}
@@ -265,12 +285,20 @@ def do_stuff(device_type, desired_state, LOGGER, name=None):
                 devices[inst.name] = {}
                 devices[inst.name]["state"] = inst.state
                 devices[inst.name]["last_changed"] = inst.time
+                devices[inst.name]["duration"] = format_duration(datetime.now() - datetime.strptime(inst.time, "%a %d %b %Y %H:%M:%S"))
+                devices[inst.name]["locked"] = is_locked(name)
     else:
         success = False
         for inst in device_instances:
             if name.lower() == inst.name.lower():
-                (success, message) = myq.set_state(inst, device_type, desired_state)
                 devices[inst.name] = {}
+                if not is_locked(name):
+                    (success, message) = myq.set_state(inst, device_type, desired_state)
+                    devices[inst.name]["was_locked"] = False
+                else:
+                    devices[inst.name]["was_locked"] = True
+                    unlock(name)
+                    message = "Did not %s %s because it was locked" % (states[desired_state], name)
                 devices[inst.name]["requested_state"] = states[desired_state]
                 devices[inst.name]["message"] = message
         if not success:
@@ -286,8 +314,55 @@ LOGGER.info('==================================STARTED==========================
 sys.stderr = MyQLogger(LOGGER, logging.ERROR)
 
 
+def check_key(name):
+    split_name = name.split(":")
+    if len(split_name) < 2 or split_name[1] != PASSCODE:
+        return None
+    return split_name[0]
+
+
+def is_locked(name):
+    if os.path.isfile(LOCKFILE):
+        with open(LOCKFILE, "r") as f:
+            data = f.read()
+        data = json.loads(data)
+        if name in data.keys() and "locked" in data[name].keys():
+            return data[name]["locked"]
+    return False
+
+
+def lock(name):
+    change_lock(name, True)
+    return is_locked(name)
+
+
+def unlock(name):
+    change_lock(name, False)
+    return not is_locked(name)
+
+
+def change_lock(name, lock):
+    if os.path.isfile(LOCKFILE):
+        with open(LOCKFILE, "r") as f:
+            data = f.read()
+        data = json.loads(data)
+        if name in data.keys() and "locked" in data[name].keys():
+            data[name]["locked"] = lock
+        else:
+            data[name] = { "locked": lock }
+    else:
+        data = { name: { "locked": lock } }
+    json_data = json.dumps(data)
+
+    with open(LOCKFILE,"w") as f:
+        f.write(json_data)
+
+
 @app.route('/open/<name>', methods=['GET'])
 def open_door(name):
+    name = check_key(name)
+    if not name:
+        return ""
     device_type = "door"
     desired_state = 1
     devices = do_stuff(device_type, desired_state, LOGGER, name)
@@ -296,6 +371,9 @@ def open_door(name):
 
 @app.route('/close/<name>', methods=['GET'])
 def close_door(name):
+    name = check_key(name)
+    if not name:
+        return ""
     device_type = "door"
     desired_state = 0
     devices = do_stuff(device_type, desired_state, LOGGER, name)
@@ -304,6 +382,9 @@ def close_door(name):
 
 @app.route('/status/<name>', methods=['GET'])
 def status(name):
+    name = check_key(name)
+    if name is None:
+        return ""
     desired_state = 2
     devices = do_stuff(None, desired_state, LOGGER, name)
     return "<pre>%s</pre>" % json.dumps(devices, indent=2)
@@ -314,6 +395,16 @@ def status_all():
     desired_state = 2
     devices = do_stuff(None, desired_state, LOGGER, None)
     return "<pre>%s</pre>" % json.dumps(devices, indent=2)
+
+
+@app.route('/lockout/<name>', methods=['GET'])
+def lockout(name):
+    name = check_key(name)
+    if name is None:
+        LOGGER.info("Didn't get a proper passcode")
+        return ""
+    success = lock(name)
+    return status("%s:%s" % (name, PASSCODE))
 
 
 @app.route('/', methods=['GET'])

@@ -200,7 +200,6 @@ if __name__ == "__main__":
             (r"/robots.txt", RobotsHandler),
             (r"/status/(.*)", StatusHandler),
             (r"/status", StatusHandler),
-            (r"/lockout", LockHandler),
             (r"/lockout/(.*)", LockHandler),
             (r"/open/(.*)", OpenCloseHandler),
             (r"/close/(.*)", OpenCloseHandler),

@@ -206,5 +206,6 @@ if __name__ == "__main__":
         ],
         debug=options.debug,
     )
-    app.listen(options.port)
+    server = tornado.web.HTTPServer(app, xheaders=True)
+    server.add_sockets(tornado.netutil.bind_sockets(options.port))
     tornado.ioloop.IOLoop.current().start()

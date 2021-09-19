@@ -1,2 +1,2 @@
 tornado==6.0.4
-pymyq==2.0.8
+pymyq==3.0.4

@@ -55,8 +55,9 @@ class RobotUtil:
             with open(self.options.lockfile, "r") as f:
                 data = f.read()
             data = json.loads(data)
-            if name in data.keys() and "locked" in data[name].keys():
-                return data[name]["locked"]
+            for device in data.keys():
+                if device.lower() == name.lower() and "locked" in data[device].keys():
+                    return data[device]["locked"]
         return False
 
 

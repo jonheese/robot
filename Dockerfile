@@ -1,8 +1,8 @@
-FROM python:3.8.1-alpine
+FROM python:3.8.2-alpine
 WORKDIR /usr/src/app
-COPY ./requirements.txt /usr/src/app/requirements.txt
 RUN pip install --upgrade pip
 RUN apk add --no-cache --virtual .build-deps build-base libffi-dev
+COPY ./requirements.txt /usr/src/app/requirements.txt
 RUN set -eux\
     && pip install -r /usr/src/app/requirements.txt \
     && rm -rf /root/.cache/pip

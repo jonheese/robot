@@ -98,8 +98,9 @@ class RobotUtil:
         if hours > 0:
             output = "%s%s hours, " % (output, hours)
         if minutes > 0:
-            output = "%s%s minutes" % (output, minutes)
+            output = "%s%s minutes, " % (output, minutes)
         if len(output) == 0 and seconds > 0:
             output = "%s seconds" % seconds
+        else:
             output = output[:-2]
         return output

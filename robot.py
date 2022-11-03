@@ -18,8 +18,8 @@ if __name__ == "__main__":
     app = tornado.web.Application(
         [
             (r"/", MainHandler),
-            (r"/favicon.ico", MainHandler),
-            (r"/robots.txt", RobotsHandler),
+            (r"/(favicon.ico)", tornado.web.StaticFileHandler, {"path": "static/"}),
+            (r"/(robots.txt)", tornado.web.StaticFileHandler, {"path": "static/"}),
             (r"/status/(.*)", StatusHandler, dict(util=util)),
             (r"/status", StatusHandler, dict(util=util)),
             (r"/lockout/(.*)", LockHandler, dict(util=util)),

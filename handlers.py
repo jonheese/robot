@@ -49,11 +49,23 @@ class StatusHandler(AuthorizedRequestHandler):
                 elif "updated_date" in inst.device_json["state"]:
                     devices[inst.name]["last_changed"] = inst.device_json["state"]["updated_date"]
                 if devices[inst.name]["last_changed"]:
-                    devices[inst.name]["duration"] = self.util.format_duration(datetime.utcnow() - datetime.strptime(devices[inst.name]["last_changed"][:26], "%Y-%m-%dT%H:%M:%S.%fZ"))
+                    try:
+                        duration = await self.parse_duration(devices=devices, name=inst.name)
+                    except ValueError:
+                        duration = await self.parse_duration(devices=devices, name=inst.name, add_z=True)
+                    devices[inst.name]["duration"] = duration
                 devices[inst.name]["locked"] = self.util.is_locked(inst.name)
             self.write(devices)
         except pymyq.errors.InvalidCredentialsError as e:
             self.write({ "error": str(e)})
+
+    async def parse_duration(self, devices=None, name=None, add_z=False):
+        if not devices or not name:
+            return
+        format_string = '%Y-%m-%dT%H:%M:%S.%f'
+        if add_z:
+            format_string += 'Z'
+        return self.util.format_duration(datetime.utcnow() - datetime.strptime(devices[name]['last_changed'][:26], format_string))
 
 
 class LockHandler(AuthorizedRequestHandler):

@@ -11,6 +11,7 @@ class RobotUtil:
 
 
     async def login(self, websession):
+        print(f"Logging in with username {self.options.username}")
         return await pymyq.login(self.options.username, self.options.password, websession)
 
 

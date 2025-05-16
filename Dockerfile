@@ -1,7 +1,7 @@
-FROM python:3.8.2-alpine
+FROM python:3.13.3-alpine
 WORKDIR /usr/src/app
 RUN pip install --upgrade pip
-RUN apk add --no-cache --virtual .build-deps build-base libffi-dev
+RUN apk add --no-cache --virtual .build-deps build-base libffi-dev python3-dev
 COPY ./requirements.txt /usr/src/app/requirements.txt
 RUN pip install --upgrade pip
 RUN set -eux\

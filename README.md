@@ -22,4 +22,5 @@ Note that running the `open` command on an open door -- and similarly the `close
 ## Lockout
 
 For some reason (possibly testing purposes) a lockout function was added to Robot.  If a given door is locked, the `open` and `close` commands are ignored and the lock is disabled.  In other words, a locked door will need to be triggered twice for the command to be run.  Note that the command that unlocks the door can be different from the command that is run afterwards (in other words, if you run a `close` command on a locked closed door, that will disable the lock, and then a subsequent `open` command will open it).  Phrased another way, locks are not exclusive to `open` or `close`, they are a property of the door (opener) in general.
+
 Locking or unlocking a door is done via the `/lockout/NAME` endpoint, and like other actions, requires the passcode to be appended.
